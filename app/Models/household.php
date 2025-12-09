@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
-use Jenssegers\Mongodb\Eloquent\Model;
+use MongoDB\Laravel\Eloquent\Model; // official package
 
 class Household extends Model
 {
     protected $connection = 'mongodb';
     protected $collection = 'households';
 
-    protected $fillable = ['owner_name', 'address', 'block', 'no'];
-
-    protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+    protected $fillable = [
+        'owner_name',
+        'address',
+        'block',
+        'no',
     ];
+
+    public $timestamps = true;
 }
