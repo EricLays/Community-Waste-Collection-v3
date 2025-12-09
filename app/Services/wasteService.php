@@ -39,6 +39,10 @@ class WasteService
         // Polymorphic instantiation by type (organic/plastic/paper/electronic)
         $waste = WasteFactory::make($payload);  // sets status=pending by default
         return $this->wastes->create($waste);
+        
+        // $waste = WasteFactory::make($payload);
+        // return $this->wastes->create($waste);  // should call save() in the repository
+
     }
 
     /**

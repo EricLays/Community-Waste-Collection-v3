@@ -3,77 +3,84 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Pickup\StorePickupRequest;
+use App\Http\Requests\Pickup\StorePickupRequest;  // ← updated import
 use App\Http\Requests\Pickup\SchedulePickupRequest;
-use App\Repositories\Contracts\WasteRepositoryInterface;
 use App\Services\WasteService;
-use App\Support\ApiResponse;
-use App\Http\Resources\PickupResource;
-use Carbon\Carbon;
+use Illuminate\Http\Response;
 
 class PickupController
 {
-    public function __construct(
-        private WasteService $service,
-        private WasteRepositoryInterface $repo
-    ) {}
+    public function __construct(private WasteService $service) {}
 
-    // POST /api/pickups  (Create pickup)
-    public function store(StorePickupRequest $request)
-    {
-        try {
-            $pickup = $this->service->create($request->validated());
-            return ApiResponse::ok(new PickupResource($pickup), [], 201);
-        } catch (\DomainException $e) {
-            return ApiResponse::err($e->getMessage(), [], 422);
-        }
-    }
+    // GET /api/pickups?status=&type=&household_id=&page=&per_page=
+    
 
-    // GET /api/pickups  (List with filters)
     public function index()
     {
-        $filters = request()->only(['status','type','household_id','pickup_date_from','pickup_date_to']);
-        $items = $this->repo->paginate($filters, 15);
-        // Wrap paginator with resource collection for consistent shape
-        return PickupResource::collection($items)->additional(['success' => true]);
+        $q = \App\Models\Waste\Waste::query();
+
+        // Guard filters so null/empty values don't exclude everything
+        if ($status = request('status')) { $q->where('status', $status); }
+        if ($type   = request('type'))   { $q->where('type',   $type);   }
+        if ($hid    = request('household_id')) { $q->where('household_id', $hid); }
+
+        $perPage = (int) request('per_page', 15);
+        $result  = $q->orderBy('_id','desc')->paginate($perPage);
+
+        return response()->json([
+            'data'  => $result->items(),
+            'links' => [
+                'first' => $result->url(1),
+                'last'  => $result->url($result->lastPage()),
+                'prev'  => $result->previousPageUrl(),
+                'next'  => $result->nextPageUrl(),
+            ],
+            'meta'  => [
+                'current_page' => $result->currentPage(),
+                'from'         => $result->firstItem(),
+                'last_page'    => $result->lastPage(),
+                'path'         => $result->path(),
+                'per_page'     => $result->perPage(),
+                'to'           => $result->lastItem(),
+                'total'        => $result->total(),
+            ],
+            'success' => true,
+        ]);
     }
+
+
+
+    // POST /api/pickups
+
+    public function store(StorePickupRequest $request)
+    {
+        $pickup = $this->service->createPickup($request->validated());
+
+        // force refresh to ensure _id/timestamps present
+        $pickup = $pickup->fresh();
+
+        return response()->json(['data' => $pickup], 201);
+    }
+
 
     // PUT /api/pickups/{id}/schedule
     public function schedule(SchedulePickupRequest $request, string $id)
     {
-        $pickup = $this->repo->find($id);
-        if (!$pickup) return ApiResponse::err('Pickup not found', [], 404);
-
-        // For electronic type, clients can pass safety_check=true here
-        if ($request->has('safety_check')) {
-            $pickup->safety_check = $request->boolean('safety_check');
-        }
-
-        try {
-            $pickup = $this->service->schedule($pickup, Carbon::parse($request->string('pickup_date')));
-            return ApiResponse::ok(new PickupResource($pickup));
-        } catch (\DomainException $e) {
-            return ApiResponse::err($e->getMessage(), [], 422);
-        }
+        $pickup = $this->service->schedule($id, new \DateTimeImmutable($request->validated()['pickup_date']));
+        return response()->json(['data' => $pickup], Response::HTTP_OK);
     }
 
     // PUT /api/pickups/{id}/complete
     public function complete(string $id)
     {
-        $pickup = $this->repo->find($id);
-        if (!$pickup) return ApiResponse::err('Pickup not found', [], 404);
-
-        $pickup = $this->service->complete($pickup);
-        return ApiResponse::ok(new PickupResource($pickup));
+        $pickup = $this->service->complete($id);
+        return response()->json(['data' => $pickup], Response::HTTP_OK);
     }
 
     // PUT /api/pickups/{id}/cancel
     public function cancel(string $id)
     {
-        $pickup = $this->repo->find($id);
-        if (!$pickup) return ApiResponse::err('Pickup not found', [], 404);
-
-        $pickup = $this->service->cancel($pickup);
-        return ApiResponse::ok(new PickupResource($pickup));
+        $pickup = $this->service->cancel($id);
+        return response()->json(['data' => $pickup], Response::HTTP_OK);
     }
 }

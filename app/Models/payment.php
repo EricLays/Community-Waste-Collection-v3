@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Jenssegers\Mongodb\Eloquent\Model;
+use MongoDB\Laravel\Eloquent\Model; // official package
 use MongoDB\BSON\Decimal128;
 
 class Payment extends Model
