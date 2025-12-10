@@ -2,7 +2,8 @@
 
 namespace App\Models;
 
-use MongoDB\Laravel\Eloquent\Model; // official package
+use MongoDB\Laravel\Eloquent\Model;
+use App\Models\Waste\Waste;
 
 class Household extends Model
 {
@@ -13,8 +14,20 @@ class Household extends Model
         'owner_name',
         'address',
         'block',
-        'no',
+        'no'
     ];
 
     public $timestamps = true;
+
+    // Relasi ke Waste
+    public function wastes()
+    {
+        return $this->hasMany(Waste::class);
+    }
+
+    // Relasi ke Payment
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
 }

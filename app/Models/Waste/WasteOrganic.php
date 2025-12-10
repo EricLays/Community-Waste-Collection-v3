@@ -2,24 +2,17 @@
 
 namespace App\Models\Waste;
 
-/**
- * Organic: normal rules; auto-cancel after 3 days (handled by scheduled command/job).
- * Cost: 50,000
- */
 class WasteOrganic extends Waste
 {
     protected $attributes = [
         'type' => 'organic',
+        'status' => self::STATUS_PENDING
     ];
 
-    public function canSchedule(): bool
+    // rule: auto cancel if > 3 days
+    public function isExpired()
     {
-        // No special constraints beyond being pending
-        return true;
-    }
-
-    public function cost(): int
-    {
-        return 50_000;
+        if (!$this->pickup_date) return false;
+        return now()->diffInDays($this->pickup_date) > 3;
     }
 }
