@@ -2,63 +2,39 @@
 
 namespace App\Services;
 
-use App\Models\Household;
-use App\Repositories\Contracts\HouseholdRepositoryInterface;
-use Illuminate\Support\Arr;
+use App\Repositories\HouseholdRepository;
 
 class HouseholdService
 {
-    public function __construct(
-        private HouseholdRepositoryInterface $households
-    ) {}
+    protected $repo;
 
-    /**
-     * Create a new household.
-     *
-     * @param  array $data  validated payload (owner_name, address, block?, no?)
-     * @return Household
-     */
-    public function create(array $data): Household
+    public function __construct(HouseholdRepository $repo)
     {
-        // Repository handles persistence (Mongo-backed Eloquent or query)
-        return $this->households->create($data);
+        $this->repo = $repo;
     }
 
-    /**
-     * List households with optional filters (search, block, no) and pagination.
-     *
-     * @param  array $filters
-     * @param  int   $perPage
-     */
-    public function list(array $filters = [], int $perPage = 15)
+    public function create(array $data)
     {
-        return $this->households->paginate($filters, $perPage);
+        return $this->repo->create($data);
     }
 
-    /**
-     * Get single household.
-     */
-    public function find(string $id): ?Household
+    public function list(array $filters)
     {
-        return $this->households->find($id);
+        return $this->repo->search($filters);
     }
 
-    /**
-     * Update household.
-     */
-    public function update(string $id, array $data): Household
+    public function detail($id)
     {
-        $household = $this->households->find($id);
-        $allowed   = Arr::only($data, ['owner_name','address','block','no']);
-        return $this->households->update($household, $allowed);
+        return $this->repo->find($id);
     }
 
-    /**
-     * Delete household (or soft delete if implemented).
-     */
-    public function delete(string $id): bool
+    public function update($id, array $data)
     {
-        $household = $this->households->find($id);
-        return $this->households->delete($household);
+        return $this->repo->update($id, $data);
+    }
+
+    public function delete($id)
+    {
+        return $this->repo->delete($id);
     }
 }

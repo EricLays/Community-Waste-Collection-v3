@@ -1,37 +1,29 @@
 <?php
-
 namespace App\Services;
 
-use App\Repositories\Contracts\ReportRepository;
+use App\Repositories\ReportRepository;
 
 class ReportService
 {
-    public function __construct(
-        private ReportRepository $reports
-    ) {}
+    protected ReportRepository $repo;
 
-    /**
-     * Waste Summary: aggregated pickups grouped by type & status.
-     */
-    public function wasteSummary(): array
+    public function __construct(ReportRepository $repo)
     {
-        return $this->reports->wasteSummary();
+        $this->repo = $repo;
     }
 
-    /**
-     * Payment Summary: totals by status + total revenue.
-     * Optionally filter by date range.
-     */
-    public function paymentSummary(?string $start = null, ?string $end = null): array
+    public function wasteSummary()
     {
-        return $this->reports->paymentSummary($start, $end);
+        return $this->repo->wasteSummary();
     }
 
-    /**
-     * Household Pickup & Payment History for a given household.
-     */
-    public function householdHistory(string $householdId): ?array
+    public function paymentSummary()
     {
-        return $this->reports->householdHistory($householdId);
+        return $this->repo->paymentSummary();
+    }
+
+    public function householdHistory($id)
+    {
+        return $this->repo->householdHistory($id);
     }
 }

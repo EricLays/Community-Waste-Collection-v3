@@ -2,87 +2,58 @@
 
 namespace App\Services;
 
-use App\Models\Waste\Waste;
+use App\Repositories\WasteRepository;
 use App\Models\Waste\WasteElectronic;
-use App\Models\Waste\WasteOrganic;
-use App\Models\Waste\WastePlastic;
-use App\Models\Waste\WastePaper;
-use InvalidArgumentException;
+use Exception;
 
-final class WasteService
+class WasteService
 {
-    /**
-     * Factory: build the correct Waste subclass based on `type`.
-     * Sets safe defaults for creation (status=pending, safety_check for electronic).
-     */
-    public function makeWaste(array $data): Waste
+    protected $repo;
+
+    public function __construct(WasteRepository $repo)
     {
-        $type = $data['type'] ?? null;
-        if (!$type) {
-            throw new InvalidArgumentException('Missing waste type.');
-        }
-
-        // Ensure default status on create
-        $data['status'] = $data['status'] ?? 'pending';
-
-        // Map type -> subclass
-        return match ($type) {
-            'electronic' => new WasteElectronic([
-                'household_id' => $data['household_id'] ?? null,
-                'type'         => 'electronic',
-                'status'       => $data['status'],
-                'pickup_date'  => $data['pickup_date'] ?? null,
-                // default false unless provided
-                'safety_check' => (bool)($data['safety_check'] ?? false),
-            ]),
-
-            'organic' => new WasteOrganic([
-                'household_id' => $data['household_id'] ?? null,
-                'type'         => 'organic',
-                'status'       => $data['status'],
-                'pickup_date'  => $data['pickup_date'] ?? null,
-            ]),
-
-            'plastic' => new WastePlastic([
-                'household_id' => $data['household_id'] ?? null,
-                'type'         => 'plastic',
-                'status'       => $data['status'],
-                'pickup_date'  => $data['pickup_date'] ?? null,
-            ]),
-
-            'paper' => new WastePaper([
-                'household_id' => $data['household_id'] ?? null,
-                'type'         => 'paper',
-                'status'       => $data['status'],
-                'pickup_date'  => $data['pickup_date'] ?? null,
-            ]),
-
-            default => throw new InvalidArgumentException("Unknown waste type: {$type}"),
-        };
+        $this->repo = $repo;
     }
 
-    
-    public function householdCanCreate(string $householdId): bool
+    public function createPickup(array $data)
     {
-        // 1) Must exist
-        if (!$this->householdRepository->exists($householdId)) {
-            return false;
-        }
-        
- //   2) Must NOT have any unpaid payments
-        // Consider "pending" and "failed" as "unpaid". If you only want "pending", adjust below.
-        $hasUnpaid = $this->paymentRepository->hasUnpaidByHousehold($householdId, statuses: ['pending', 'failed']);
-
-        if ($hasUnpaid) {
-            return false;
+        $data['status'] = 'pending';
+        // business rule: electronic requires safety_check
+        if ($data['type'] === 'electronic' && empty($data['safety_check'])) {
+            throw new Exception("Electronic waste requires safety_check before creation.");
         }
 
-        // 3) Optional – ask repository for additional domain/data-layer checks
-        // (e.g., preventing duplicate open requests, etc.)
-        return $this->wasteRepository->householdCanCreate($householdId);
+        return $this->repo->create($data);
     }
 
+    public function schedulePickup(string $id, string $pickupDate)
+    {
+        $waste = $this->repo->find($id);
+
+        // electronic rule
+        if ($waste instanceof WasteElectronic && !$waste->safety_check) {
+            throw new Exception("Electronic waste cannot be scheduled without safety_check.");
+        }
+
+        $waste->pickup_date = $pickupDate;
+        $waste->status = 'scheduled';
+
+        return $this->repo->save($waste);
+    }
+
+    public function completePickup(string $id)
+    {
+        $waste = $this->repo->find($id);
+        $waste->status = 'completed';
+
+        return $this->repo->save($waste);
+    }
+
+    public function cancelPickup(string $id)
+    {
+        $waste = $this->repo->find($id);
+        $waste->status = 'canceled';
+
+        return $this->repo->save($waste);
+    }
 }
-
-    
-
