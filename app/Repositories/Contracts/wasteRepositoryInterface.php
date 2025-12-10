@@ -10,9 +10,8 @@ interface WasteRepositoryInterface
 {
     public function create(Waste $waste): Waste;
     public function find(string $id): ?Waste;
-    public function findOrFail(string $id): Waste;
     public function update(Waste $waste): Waste;
-
+    public function householdCanCreate(string $householdId): bool;
     /**
      * Optional: expose a query builder when you need custom queries (e.g., scheduled job).
      */

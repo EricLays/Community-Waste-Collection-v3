@@ -5,10 +5,7 @@ use MongoDB\Laravel\Eloquent\Model;
 
 class Pickup extends Model
 {
-    // If your collection name is not the plural snake-case of the class:
     protected $collection = 'wastes';
-
-    // Optional: explicitly set connection
     protected $connection = 'mongodb';
 
     // Allow mass assignment for fields you create on POST:
@@ -20,4 +17,6 @@ class Pickup extends Model
         //'safety_check'
         // ...any other fields
     ];
+    public $timestamps = true;
+    
 }

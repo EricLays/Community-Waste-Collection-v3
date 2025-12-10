@@ -18,11 +18,6 @@ final class HouseholdMongoRepository implements HouseholdRepositoryInterface
         return Household::query()->find($id);
     }
 
-    public function findOrFail(string $id): Household
-    {
-        return Household::query()->findOrFail($id);
-    }
-
     public function update(Household $household, array $data): Household
     {
         $household->fill($data);

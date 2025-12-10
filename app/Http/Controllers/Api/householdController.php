@@ -8,7 +8,7 @@ use App\Services\HouseholdService;
 use App\Models\Household;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\Controller\Api;
 use App\Http\Requests\StoreHouseholdRequest;
 
 

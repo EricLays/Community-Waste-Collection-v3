@@ -48,7 +48,7 @@ class HouseholdService
      */
     public function update(string $id, array $data): Household
     {
-        $household = $this->households->findOrFail($id);
+        $household = $this->households->find($id);
         $allowed   = Arr::only($data, ['owner_name','address','block','no']);
         return $this->households->update($household, $allowed);
     }
@@ -58,7 +58,7 @@ class HouseholdService
      */
     public function delete(string $id): bool
     {
-        $household = $this->households->findOrFail($id);
+        $household = $this->households->find($id);
         return $this->households->delete($household);
     }
 }

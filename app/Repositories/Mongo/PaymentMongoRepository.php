@@ -11,6 +11,7 @@ final class PaymentMongoRepository implements PaymentRepositoryInterface
 {
     public function create(array $data): Payment
     {
+        $payment->save();
         return Payment::query()->create($data);
     }
 

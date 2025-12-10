@@ -9,7 +9,6 @@ interface HouseholdRepositoryInterface
 {
     public function create(array $data): Household;
     public function find(string $id): ?Household;
-    public function findOrFail(string $id): Household;
     public function update(Household $household, array $data): Household;
     public function delete(Household $household): bool;
 

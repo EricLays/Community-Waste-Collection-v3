@@ -15,66 +15,30 @@ use Illuminate\Http\Response;
  *
  * All responses are JSON.
  */
-class ReportController
+class ReportController extends Controller
 {
-    public function __construct(
-        private ReportService $service
-    ) {
-        // If you plan to protect reports with auth (optional):
-        // $this->middleware('auth:sanctum')->only(['wasteSummary','paymentSummary','householdHistory']);
+    protected ReportService $service;
+
+    public function __construct(ReportService $service)
+    {
+        $this->service = $service;
     }
 
-    /**
-     * Waste Summary:
-     * Aggregated pickups grouped by waste type & status.
-     * Query params (optional): none, or add pagination/filter if your service supports it.
-     */
-    public function wasteSummary(Request $request)
+    // GET /api/reports/waste-summary
+    public function wasteSummary()
     {
-        $summary = $this->service->wasteSummary();
-        return response()->json([
-            'data' => $summary,
-        ], Response::HTTP_OK);
+        return response()->json($this->service->wasteSummary());
     }
 
-    /**
-     * Payment Summary:
-     * Totals by status + total revenue.
-     * Query params (optional): start, end (YYYY-MM-DD) for date range filters if implemented.
-     */
-    public function paymentSummary(Request $request)
+    // GET /api/reports/payment-summary
+    public function paymentSummary()
     {
-        $summary = $this->service->paymentSummary(
-            start: $request->query('start'),
-            end:   $request->query('end')
-        );
-
-        return response()->json([
-            'data' => $summary,
-        ], Response::HTTP_OK);
+        return response()->json($this->service->paymentSummary());
     }
 
-    /**
-     * Household Pickup & Payment History:
-     * GET /api/reports/households/{id}/history
-     *
-     * @param  string  $id  Household ID (Mongo ObjectId string)
-     */
-    public function householdHistory(string $id)
+    // GET /api/reports/households/{id}/history
+    public function householdHistory($id)
     {
-        $history = $this->service->householdHistory($id);
-
-        if (!$history) {
-            return response()->json([
-                'error' => [
-                    'code'    => Response::HTTP_NOT_FOUND,
-                    'message' => 'Household not found or no history available',
-                ],
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        return response()->json([
-            'data' => $history,
-        ], Response::HTTP_OK);
+        return response()->json($this->service->householdHistory($id));
     }
 }

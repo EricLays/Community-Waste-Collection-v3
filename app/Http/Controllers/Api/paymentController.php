@@ -10,40 +10,41 @@ use App\Repositories\Contracts\PaymentRepositoryInterface;
 use App\Services\PaymentService;
 use App\Support\ApiResponse;
 
-class PaymentController
+class PaymentController extends Controller
 {
-    public function __construct(
-        private PaymentService $service,
-        private PaymentRepositoryInterface $repo
-    ) {}
+    protected PaymentService $service;
+
+    public function __construct(PaymentService $service)
+    {
+        $this->service = $service;
+    }
 
     // POST /api/payments
     public function store(StorePaymentRequest $request)
     {
         $payment = $this->service->create($request->validated());
-        return ApiResponse::ok(new PaymentResource($payment), [], 201);
+        return new PaymentResource($payment);
     }
 
     // GET /api/payments
-    public function index()
+    public function index(Request $request)
     {
-        $filters = request()->only(['status','household_id','from','to']);
-        $items = $this->repo->paginate($filters, 15);
-        return PaymentResource::collection($items)->additional(['success' => true]);
+        $filters = [
+            'status'        => $request->status,
+            'household_id'  => $request->household_id,
+            'date_from'     => $request->date_from,
+            'date_to'       => $request->date_to,
+        ];
+
+        $payments = $this->service->list($filters);
+
+        return PaymentResource::collection($payments);
     }
 
     // PUT /api/payments/{id}/confirm
-    public function confirm(ConfirmPaymentRequest $request, string $id)
+    public function confirm($id)
     {
-        $payment = $this->repo->find($id);
-        if (!$payment) return ApiResponse::err('Payment not found', [], 404);
-
-        // Optionally override payment_date via request
-        if ($request->filled('payment_date')) {
-            $payment->payment_date = $request->date('payment_date');
-        }
-
-        $payment = $this->service->confirm($payment);
-        return ApiResponse::ok(new PaymentResource($payment));
+        $payment = $this->service->confirm($id);
+        return new PaymentResource($payment);
     }
 }

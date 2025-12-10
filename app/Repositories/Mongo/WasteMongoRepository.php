@@ -23,11 +23,6 @@ final class WasteMongoRepository implements WasteRepositoryInterface
         return Waste::query()->find($id);
     }
 
-    public function findOrFail(string $id): Waste
-    {
-        return Waste::query()->findOrFail($id);
-    }
-
     public function update(Waste $waste): Waste
     {
         $waste->save();
@@ -51,6 +46,19 @@ final class WasteMongoRepository implements WasteRepositoryInterface
         }
 
         return $q->orderBy('_id','desc')->paginate($perPage);
+    }
+
+    
+    public function householdCanCreate(string $householdId): bool
+    {
+        // Option A: keep repository simple, let the service enforce the rule.
+        return true;
+
+        // Option B (optional): also prevent duplicate pending pickups at data layer
+        // return ! Waste::query()
+        //     ->where('household_id', $householdId)
+        //     ->where('status', 'pending')
+        //     ->exists();
     }
 
 

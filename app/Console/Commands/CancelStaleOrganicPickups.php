@@ -1,8 +1,8 @@
 <?php
-
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use App\Models\Waste\Waste;
 
 class CancelStaleOrganicPickups extends Command
 {
@@ -11,8 +11,15 @@ class CancelStaleOrganicPickups extends Command
 
     public function handle(): int
     {
-        // ... your logic here ...
-        $this->info('Canceled stale organic pickups.');
-        return self::SUCCESS;
+        $cutoff = now()->subDays(3);
+        $stale = Waste::query()
+            ->where('type', 'organic')
+            ->where('status', 'pending')
+            ->where('created_at', '<=', $cutoff)
+            ->get();
+
+        foreach ($stale as $w) { $w->cancel(); }
+        $this->info("Canceled {$stale->count()} stale organic pickups.");
+        return Command::SUCCESS;
     }
 }

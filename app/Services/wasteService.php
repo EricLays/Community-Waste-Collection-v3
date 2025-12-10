@@ -60,4 +60,29 @@ final class WasteService
             default => throw new InvalidArgumentException("Unknown waste type: {$type}"),
         };
     }
+
+    
+    public function householdCanCreate(string $householdId): bool
+    {
+        // 1) Must exist
+        if (!$this->householdRepository->exists($householdId)) {
+            return false;
+        }
+        
+ //   2) Must NOT have any unpaid payments
+        // Consider "pending" and "failed" as "unpaid". If you only want "pending", adjust below.
+        $hasUnpaid = $this->paymentRepository->hasUnpaidByHousehold($householdId, statuses: ['pending', 'failed']);
+
+        if ($hasUnpaid) {
+            return false;
+        }
+
+        // 3) Optional – ask repository for additional domain/data-layer checks
+        // (e.g., preventing duplicate open requests, etc.)
+        return $this->wasteRepository->householdCanCreate($householdId);
+    }
+
 }
+
+    
+
