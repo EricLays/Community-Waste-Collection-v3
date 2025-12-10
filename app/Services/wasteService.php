@@ -3,116 +3,61 @@
 namespace App\Services;
 
 use App\Models\Waste\Waste;
-use App\Models\Waste\WasteFactory;
-use App\Repositories\Contracts\WasteRepositoryInterface;
-use App\Repositories\Contracts\PaymentRepositoryInterface;
-use App\Repositories\Contracts\HouseholdRepositoryInterface;
-use Illuminate\Support\Carbon;
+use App\Models\Waste\WasteElectronic;
+use App\Models\Waste\WasteOrganic;
+use App\Models\Waste\WastePlastic;
+use App\Models\Waste\WastePaper;
+use InvalidArgumentException;
 
-class WasteService
+final class WasteService
 {
-    public function __construct(
-        private WasteRepositoryInterface      $wastes,
-        private PaymentRepositoryInterface    $payments,
-        private HouseholdRepositoryInterface  $households,
-    ) {}
-
     /**
-     * Create new pickup request (type required).
-     * Business rule: block if household has unpaid payment.
+     * Factory: build the correct Waste subclass based on `type`.
+     * Sets safe defaults for creation (status=pending, safety_check for electronic).
      */
-    public function createPickup(array $payload): Waste
+    public function makeWaste(array $data): Waste
     {
-        $householdId = $payload['household_id'] ?? null;
-        if (!$householdId) {
-            throw new \InvalidArgumentException('household_id is required');
+        $type = $data['type'] ?? null;
+        if (!$type) {
+            throw new InvalidArgumentException('Missing waste type.');
         }
 
-        // Ensure household exists (optional but recommended)
-        $this->households->findOrFail($householdId);
+        // Ensure default status on create
+        $data['status'] = $data['status'] ?? 'pending';
 
-        // Rule #1: block if unpaid exists
-        if ($this->payments->hasUnpaid($householdId)) {
-            throw new \RuntimeException('Unpaid payment exists for this household');
-        }
+        // Map type -> subclass
+        return match ($type) {
+            'electronic' => new WasteElectronic([
+                'household_id' => $data['household_id'] ?? null,
+                'type'         => 'electronic',
+                'status'       => $data['status'],
+                'pickup_date'  => $data['pickup_date'] ?? null,
+                // default false unless provided
+                'safety_check' => (bool)($data['safety_check'] ?? false),
+            ]),
 
-        // Polymorphic instantiation by type (organic/plastic/paper/electronic)
-        $waste = WasteFactory::make($payload);  // sets status=pending by default
-        return $this->wastes->create($waste);
-        
-        // $waste = WasteFactory::make($payload);
-        // return $this->wastes->create($waste);  // should call save() in the repository
+            'organic' => new WasteOrganic([
+                'household_id' => $data['household_id'] ?? null,
+                'type'         => 'organic',
+                'status'       => $data['status'],
+                'pickup_date'  => $data['pickup_date'] ?? null,
+            ]),
 
-    }
+            'plastic' => new WastePlastic([
+                'household_id' => $data['household_id'] ?? null,
+                'type'         => 'plastic',
+                'status'       => $data['status'],
+                'pickup_date'  => $data['pickup_date'] ?? null,
+            ]),
 
-    /**
-     * List pickups with filters: status, type, household_id; paginate.
-     */
-    public function list(array $filters = [], int $perPage = 15)
-    {
-        return $this->wastes->paginate($filters, $perPage);
-    }
+            'paper' => new WastePaper([
+                'household_id' => $data['household_id'] ?? null,
+                'type'         => 'paper',
+                'status'       => $data['status'],
+                'pickup_date'  => $data['pickup_date'] ?? null,
+            ]),
 
-    /**
-     * Schedule pickup: only from pending; electronic requires safety_check=true.
-     */
-    public function schedule(string $id, \DateTimeInterface $date): Waste
-    {
-        $waste = $this->wastes->findOrFail($id);
-        $waste->schedule($date);  // polymorphic guard inside model
-        return $this->wastes->update($waste);
-    }
-
-    /**
-     * Complete pickup: only scheduled; will auto-create a payment by type (50k or 100k).
-     */
-    public function complete(string $id): Waste
-    {
-        $waste = $this->wastes->findOrFail($id);
-
-        // Perform completion on model (returns charge based on type)
-        $amount = $waste->complete();
-
-        // Auto-generate payment record
-        $this->payments->create([
-            'household_id' => $waste->household_id,
-            'amount'       => $amount,
-            'status'       => 'pending',
-            'payment_date' => null,
-        ]);
-
-        return $this->wastes->update($waste);
-    }
-
-    /**
-     * Cancel pickup: only pending/scheduled.
-     */
-    public function cancel(string $id): Waste
-    {
-        $waste = $this->wastes->findOrFail($id);
-        $waste->cancel();
-        return $this->wastes->update($waste);
-    }
-
-    /**
-     * (Optional) Scheduled rule for Organic: auto-cancel after 3 days when not picked up.
-     * Call from a command/cron.
-     */
-    public function autoCancelOrganicStale(): int
-    {
-        $threshold = Carbon::now()->subDays(3);
-        $stale = $this->wastes->query()
-            ->where('type', 'organic')
-            ->whereIn('status', [Waste::STATUS_PENDING, Waste::STATUS_SCHEDULED])
-            ->where('pickup_date', '<', $threshold)
-            ->get();
-
-        $count = 0;
-        foreach ($stale as $w) {
-            $w->cancel();
-            $this->wastes->update($w);
-            $count++;
-        }
-        return $count;
+            default => throw new InvalidArgumentException("Unknown waste type: {$type}"),
+        };
     }
 }

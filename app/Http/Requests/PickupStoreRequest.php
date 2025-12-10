@@ -1,27 +1,23 @@
 <?php
-
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StoreHouseholdRequest extends FormRequest
+class PickupStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // allow public creation; add auth if needed
+        return true;
     }
-
 
     public function rules(): array
     {
         return [
             'household_id' => ['required', 'string'],
             'type'         => ['required', 'in:organic,plastic,paper,electronic'],
-            // On create, safety_check is optional (default false); only enforced on schedule.
-            'safety_check' => ['sometimes', 'boolean'],
-            'pickup_date'  => ['nullable', 'date'], // creation may omit date
+            'safety_check' => ['sometimes', 'boolean'], // only enforced before scheduling
+            'pickup_date'  => ['nullable', 'date'],
             'status'       => ['nullable', 'in:pending,scheduled,completed,canceled'],
         ];
     }
-
 }

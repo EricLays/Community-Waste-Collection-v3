@@ -33,22 +33,23 @@ final class PaymentMongoRepository implements PaymentRepositoryInterface
     public function paginate(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
         $q = Payment::query();
+        foreach (['status','household_id'] as $f)
+        {
+            if (!empty($filters['status'])) {
+                $q->where('status', $filters['status']);
+            }
+            if (!empty($filters['household_id'])) {
+                $q->where('household_id', $filters['household_id']);
+            }
 
-        if (!empty($filters['status'])) {
-            $q->where('status', $filters['status']);
+            // Optional date range filter on payment_date
+            if (!empty($filters['start'])) {
+                $q->where('payment_date', '>=', $filters['start']);
+            }
+            if (!empty($filters['end'])) {
+                $q->where('payment_date', '<=', $filters['end']);
+            }
         }
-        if (!empty($filters['household_id'])) {
-            $q->where('household_id', $filters['household_id']);
-        }
-
-        // Optional date range filter on payment_date
-        if (!empty($filters['start'])) {
-            $q->where('payment_date', '>=', $filters['start']);
-        }
-        if (!empty($filters['end'])) {
-            $q->where('payment_date', '<=', $filters['end']);
-        }
-
         return $q->orderBy('_id', 'desc')->paginate($perPage);
     }
 
@@ -59,4 +60,14 @@ final class PaymentMongoRepository implements PaymentRepositoryInterface
             ->where('status', 'pending')
             ->exists();
     }
+    
+    public function confirm(string $id): Payment
+    {
+        $p = Payment::findOrFail($id);
+        $p->status = 'paid';
+        $p->payment_date = now();
+        $p->save();
+        return $p;
+    }
+
 }

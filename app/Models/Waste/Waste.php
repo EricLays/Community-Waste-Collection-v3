@@ -1,21 +1,25 @@
 <?php
-
 namespace App\Models\Waste;
 
 use MongoDB\Laravel\Eloquent\Model;
 
-class Waste extends Model    // ← not abstract
+class Waste extends Model   
 {
     protected $connection = 'mongodb';
     protected $collection = 'wastes';
 
     protected $fillable = [
-        'household_id', 'type', 'pickup_date', 'status', 'safety_check', 'notes',
+        'household_id', 
+        'type', 
+        'pickup_date', 
+        'status', 
+        'safety_check', 
+        'notes',
     ];
 
     protected $casts = [
         'pickup_date'  => 'datetime',
-        'safety_check' => 'bool',
+        'safety_check' => 'boolean',
     ];
 
     public const STATUS_PENDING   = 'pending';

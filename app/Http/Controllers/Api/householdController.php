@@ -2,46 +2,57 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\HouseholdRequest;
+use App\Http\Resources\HouseholdResource;
+use App\Services\HouseholdService;
+use App\Models\Household;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreHouseholdRequest;
-use App\Http\Resources\HouseholdResource;
-use App\Services\HouseholdService; // if you use a service layer
 
-class HouseholdController
+
+class HouseholdController extends Controller
 {
-    public function __construct(private HouseholdService $service) {}
+    protected $service;
 
-    public function store(StoreHouseholdRequest $request)
-    {
+    public function __construct(HouseholdService $service) {
+        $this->service = $service;
+    }
+
+    public function index() {
+        $data = $this->service->list(request()->all());
+        return HouseholdResource::collection($data);
+    }
+
+    public function store(HouseholdRequest $request) { 
         $household = $this->service->create($request->validated());
-
-        return (new HouseholdResource($household))
-            ->response()
-            ->setStatusCode(201);
+        return new HouseholdResource($household);
     }
 
-    public function index()
-    {
-        // if you return a paginator
-        $result = $this->service->list(request()->all(), (int) request('per_page', 15));
-        return response()->json([
-            'data'  => $result->items(),
-            'links' => [
-                'first' => $result->url(1),
-                'last'  => $result->url($result->lastPage()),
-                'prev'  => $result->previousPageUrl(),
-                'next'  => $result->nextPageUrl(),
-            ],
-            'meta'  => [
-                'current_page' => $result->currentPage(),
-                'from'         => $result->firstItem(),
-                'last_page'    => $result->lastPage(),
-                'path'         => $result->path(),
-                'per_page'     => $result->perPage(),
-                'to'           => $result->lastItem(),
-                'total'        => $result->total(),
-            ],
-            'success' => true,
-        ]);
+    public function show($id) {
+        $household = $this->service->detail($id);
+
+        if (!$household) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        return new HouseholdResource($household);
     }
+
+    public function update(HouseholdRequest $request, $id) {
+        $household = $this->service->update($id, $request->validated());
+
+        if (!$household) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
+
+        return new HouseholdResource($household);
+    }
+
+    public function destroy($id) {
+        $this->service->delete($id);
+        return response()->json(['message' => 'Deleted successfully']);
+    }
+
 }

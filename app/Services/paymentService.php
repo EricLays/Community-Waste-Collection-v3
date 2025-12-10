@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Repositories\Contracts\PaymentRepositoryInterface;
 use Illuminate\Support\Carbon;
+use App\Models\Payment;
+use App\Models\Waste\Waste;
 
-class PaymentService
+
+final class PaymentService
 {
     public function __construct(
         private PaymentRepositoryInterface $payments
@@ -64,4 +67,19 @@ class PaymentService
             'payment_date' => null,
         ]);
     }
+
+    public function createForPickup(Waste $waste): Payment
+    {
+        $amount = match ($waste->type) {
+            'electronic' => 100_000,
+            default      => 50_000,
+        };
+        return Payment::create([
+            'household_id' => $waste->household_id,
+            'amount'       => $amount,
+            'payment_date' => null,
+            'status'       => 'pending',
+        ]);
+    }
+
 }

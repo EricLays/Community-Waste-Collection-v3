@@ -2,85 +2,52 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Http\Requests\Pickup\StorePickupRequest;  // ← updated import
-use App\Http\Requests\Pickup\SchedulePickupRequest;
+use App\Http\Controllers\Api\Controller;
+use App\Http\Requests\PickupStoreRequest;
+use App\Http\Resources\PickupResource;
+use App\Repositories\Contracts\WasteRepositoryInterface;
 use App\Services\WasteService;
-use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Http\Request;
 
-class PickupController
+
+final class PickupController extends Controller
 {
-    public function __construct(private WasteService $service) {}
+    // ✅ inject your dependencies; Laravel resolves them via the service container
+    public function __construct(
+        private WasteService $wasteService,
+        private WasteRepositoryInterface $wasteRepo,
+    ) {}
 
-    // GET /api/pickups?status=&type=&household_id=&page=&per_page=
+    public function store(PickupStoreRequest $request)
+    {
+        $data = $request->validated();
+        
+        if (!$this->wasteRepo->householdCanCreate($data['household_id'])) {
+            return response()->json(['message' => 'Unpaid payments exist'], 422);
+        }
+
+        $data['status'] = $data['status'] ?? 'pending';
+
+        // Build the correct subclass (electronic/organic/etc.)
+        $waste   = $this->wasteService->makeWaste($data);
+        $created = $this->wasteRepo->create($waste);   // ✅ use $waste (local), not $this->waste
+
+        // Return 201 Created (and you can add a Location header if you wish)
+        return PickupResource::make($created)
+            ->response()
+            ->setStatusCode(Response::HTTP_CREATED);   // 201
+    }
+
     
-
-    public function index()
+    public function index(Request $request)
     {
-        $q = \App\Models\Waste\Waste::query();
+        $filters = $request->only(['status', 'type', 'household_id']);
+        $perPage = (int) $request->query('per_page', 15);
+        $pickups = $this->wasteRepo->paginate($filters, $perPage);
 
-        // Guard filters so null/empty values don't exclude everything
-        if ($status = request('status')) { $q->where('status', $status); }
-        if ($type   = request('type'))   { $q->where('type',   $type);   }
-        if ($hid    = request('household_id')) { $q->where('household_id', $hid); }
-
-        $perPage = (int) request('per_page', 15);
-        $result  = $q->orderBy('_id','desc')->paginate($perPage);
-
-        return response()->json([
-            'data'  => $result->items(),
-            'links' => [
-                'first' => $result->url(1),
-                'last'  => $result->url($result->lastPage()),
-                'prev'  => $result->previousPageUrl(),
-                'next'  => $result->nextPageUrl(),
-            ],
-            'meta'  => [
-                'current_page' => $result->currentPage(),
-                'from'         => $result->firstItem(),
-                'last_page'    => $result->lastPage(),
-                'path'         => $result->path(),
-                'per_page'     => $result->perPage(),
-                'to'           => $result->lastItem(),
-                'total'        => $result->total(),
-            ],
-            'success' => true,
-        ]);
+        // Returning a resource collection from a paginator includes links & meta
+        return PickupResource::collection($pickups);
     }
 
-
-
-    // POST /api/pickups
-
-    public function store(StorePickupRequest $request)
-    {
-        $pickup = $this->service->createPickup($request->validated());
-
-        // force refresh to ensure _id/timestamps present
-        $pickup = $pickup->fresh();
-
-        return response()->json(['data' => $pickup], 201);
-    }
-
-
-    // PUT /api/pickups/{id}/schedule
-    public function schedule(SchedulePickupRequest $request, string $id)
-    {
-        $pickup = $this->service->schedule($id, new \DateTimeImmutable($request->validated()['pickup_date']));
-        return response()->json(['data' => $pickup], Response::HTTP_OK);
-    }
-
-    // PUT /api/pickups/{id}/complete
-    public function complete(string $id)
-    {
-        $pickup = $this->service->complete($id);
-        return response()->json(['data' => $pickup], Response::HTTP_OK);
-    }
-
-    // PUT /api/pickups/{id}/cancel
-    public function cancel(string $id)
-    {
-        $pickup = $this->service->cancel($id);
-        return response()->json(['data' => $pickup], Response::HTTP_OK);
-    }
 }
