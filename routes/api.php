@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Route;
 
 // --- Import namespaced controllers explicitly ---
 use App\Http\Controllers\Api\HouseholdController;
-use App\Http\Controllers\Api\PickupController;
+use App\Http\Controllers\Api\WasteController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ReportController;
 
@@ -30,20 +30,20 @@ Route::apiResource('households', HouseholdController::class);
 // ---------------------
 // PICKUPS (POST + actions)
 // ---------------------
-Route::get('pickups',           [PickupController::class, 'index'])->name('pickups.index');
+Route::get('pickups',           [WasteController::class, 'index'])->name('pickups.index');
 
 // Create new pickup (POST)
-Route::post('pickups',          [PickupController::class, 'store'])->name('pickups.store');
+Route::post('pickups',          [WasteController::class, 'store'])->name('pickups.store');
 
 // Actions (PUT)
 // - schedule (requires status=pending; electronic needs safety_check=true)
-Route::put('pickups/{id}/schedule', [PickupController::class, 'schedule'])->name('pickups.schedule');
+Route::put('pickups/{id}/schedule', [WasteController::class, 'schedule'])->name('pickups.schedule');
 
 // - complete (auto-creates payment by type: organic/plastic/paper=50k; electronic=100k)
-Route::put('pickups/{id}/complete', [PickupController::class, 'complete'])->name('pickups.complete');
+Route::put('pickups/{id}/complete', [WasteController::class, 'complete'])->name('pickups.complete');
 
 // - cancel
-Route::put('pickups/{id}/cancel',   [PickupController::class, 'cancel'])->name('pickups.cancel');
+Route::put('pickups/{id}/cancel',   [WasteController::class, 'cancel'])->name('pickups.cancel');
 
 // ---------------------
 // PAYMENTS (POST + confirm)

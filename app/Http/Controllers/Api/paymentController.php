@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Api\Controller;
-use App\Http\Requests\Payment\StorePaymentRequest;
-use App\Http\Requests\Payment\ConfirmPaymentRequest;
+use App\Http\Requests\StorePaymentRequest;
 use App\Http\Resources\PaymentResource;
-use App\Repositories\Contracts\PaymentRepositoryInterface;
 use App\Services\PaymentService;
 use App\Support\ApiResponse;
+use Illuminate\Http\Request;
 
 class PaymentController extends Controller
 {
